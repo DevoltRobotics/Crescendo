@@ -4,9 +4,34 @@
 
 package frc.robot;
 
+import java.time.Instant;
+import java.util.List;
+
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryConfig;
+import edu.wpi.first.math.trajectory.TrajectoryGenerator;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.SwerveControllerCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.Constants.AutoConstants;
+import frc.robot.Constants.DriveConstants;
+import frc.robot.Constants.OIConstants;
+import frc.robot.auto.Auto3Notas;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -15,9 +40,10 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
  * project.
  */
 public class Robot extends TimedRobot {
-  private Command m_autonomousCommand;
-
   private RobotContainer m_robotContainer;
+
+  private final String kNoAuto = "No Autonomo";
+  private final String kAuto3Notas = "Auto 3 Notas";
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -28,6 +54,8 @@ public class Robot extends TimedRobot {
     // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
+
+    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAuto3Notas});
   }
 
   /**
@@ -56,18 +84,12 @@ public class Robot extends TimedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
-    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
-    /*
-     * String autoSelected = SmartDashboard.getString("Auto Selector",
-     * "Default"); switch(autoSelected) { case "My Auto": autonomousCommand
-     * = new MyAutoCommand(); break; case "Default Auto": default:
-     * autonomousCommand = new ExampleCommand(); break; }
-     */
-
-    // schedule the autonomous command (example)
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.schedule();
+    switch(SmartDashboard.getString("Auto Selector", kNoAuto)) {
+      case kAuto3Notas:
+        Auto3Notas.auto3Notas(m_robotContainer);
+        break;
+      default:
+        break;
     }
   }
 
@@ -75,20 +97,109 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {}
 
+  double teleopTurbo = 1.0;
+
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
-    }
+    CommandScheduler.getInstance().cancelAll();
+
+    m_robotContainer.m_photonCamera.setDriverMode(true);
+
+    // Configure default commands
+    m_robotContainer.m_robotDrive.setDefaultCommand(
+        // The left stick controls translation of the robot.
+        // Turning is controlled by the X axis of the right stick.
+        new RunCommand(
+            () -> {
+              var leftY = m_robotContainer.m_driveController.getLeftY();
+              var leftX = m_robotContainer.m_driveController.getLeftX();
+              var rightX = m_robotContainer.m_driveController.getRightX();
+
+              if(Math.abs(leftY) <= 0.05) {
+                leftY = 0;
+              }
+              if(Math.abs(leftX) <= 0.05) {
+                leftX = 0;
+              }
+              if(Math.abs(rightX) <= 0.05) {
+                rightX = 0;
+              }
+
+              m_robotContainer.m_robotDrive.drive(
+                -MathUtil.applyDeadband(leftY * teleopTurbo, OIConstants.kDriveDeadband),
+                -MathUtil.applyDeadband(leftX * teleopTurbo, OIConstants.kDriveDeadband),
+                -MathUtil.applyDeadband(rightX * teleopTurbo, OIConstants.kDriveDeadband),
+                true, true);
+            },
+            m_robotContainer.m_robotDrive));
+
+    Trigger xButton = new Trigger(() -> m_robotContainer.m_clawController.getXButton());
+    xButton.onTrue(new TogglingCommand(
+      new InstantCommand(() -> m_robotContainer.m_armSolenoid.set(Value.kForward)),
+      new InstantCommand(() -> m_robotContainer.m_armSolenoid.set(Value.kReverse))
+    ));
   }
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+    if(m_robotContainer.m_driveController.getLeftStickButton()) {
+      m_robotContainer.m_robotDrive.zero();
+    }
+
+    if(m_robotContainer.m_driveController.getLeftTriggerAxis() >= 0.1) {
+      teleopTurbo = 1.0 - m_robotContainer.m_driveController.getLeftTriggerAxis() * 0.8;
+    } else {
+      teleopTurbo = 1.0 - m_robotContainer.m_driveController.getRightTriggerAxis() * 0.8;
+    }
+    
+    double shooterPower = 0;
+    double shooterAcceleratorPower = 0;
+     
+    if(m_robotContainer.m_clawController.getAButton()) {
+      m_robotContainer.m_intake.set(0.6);
+      m_robotContainer.m_intakeContraRoller.set(0.6);
+      
+      shooterAcceleratorPower -= 0.3;
+      shooterPower -= 0.3;
+    } else if(m_robotContainer.m_clawController.getBButton()) {
+      m_robotContainer.m_intake.set(-0.4);
+      m_robotContainer.m_intakeContraRoller.set(-1.0);
+    } else if(m_robotContainer.m_clawController.getLeftBumper()) {
+      m_robotContainer.m_intake.set(0.3);
+      m_robotContainer.m_intakeContraRoller.set(0.3);
+    } else if(m_robotContainer.m_clawController.getRightBumper()) {
+      m_robotContainer.m_intake.set(-0.3);
+      m_robotContainer.m_intakeContraRoller.set(-0.3);
+    } else {
+      m_robotContainer.m_intake.set(0);
+      m_robotContainer.m_intakeContraRoller.set(0);
+    }
+    
+    if(m_robotContainer.m_driveController.getRightTriggerAxis() > 0.5) {
+      shooterAcceleratorPower += 0.5;
+    }
+    
+    if(m_robotContainer.m_clawController.getLeftTriggerAxis() > 0.5) {
+      shooterPower += 0.2;
+    }
+
+    if(m_robotContainer.m_driveController.getYButton() || m_robotContainer.m_clawController.getRightTriggerAxis() > 0.5 || m_robotContainer.m_clawController.getYButton()) {
+      shooterPower += 1.0;
+    }
+
+    m_robotContainer.m_shooterLeft.set(shooterPower);
+    m_robotContainer.m_shooterRight.set(shooterPower);
+    m_robotContainer.m_shooterAccelerator.set(shooterAcceleratorPower);
+
+    if(m_robotContainer.m_clawController.getPOV() == 90) {
+      m_robotContainer.m_hangRelease.set(1.0); 
+    } else if(m_robotContainer.m_clawController.getPOV() == 270) {
+      m_robotContainer.m_hangRelease.set(0.0);
+    }
+
+    m_robotContainer.m_hang.set(-m_robotContainer.m_clawController.getLeftY());
+  }
 
   @Override
   public void testInit() {

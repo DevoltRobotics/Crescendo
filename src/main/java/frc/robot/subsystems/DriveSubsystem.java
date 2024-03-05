@@ -4,6 +4,10 @@
 
 package frc.robot.subsystems;
 
+import com.kauailabs.navx.frc.AHRS;
+
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -13,11 +17,15 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.util.WPIUtilJNI;
-import edu.wpi.first.wpilibj.ADIS16470_IMU;
-import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
+import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DriveConstants;
 import frc.utils.SwerveUtils;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class DriveSubsystem extends SubsystemBase {
   // Create MAXSwerveModules
@@ -41,8 +49,10 @@ public class DriveSubsystem extends SubsystemBase {
       DriveConstants.kRearRightTurningCanId,
       DriveConstants.kBackRightChassisAngularOffset);
 
+  private final Field2d field = new Field2d();
+
   // The gyro sensor
-  private final ADIS16470_IMU m_gyro = new ADIS16470_IMU();
+  private final AHRS m_gyro = new AHRS(SPI.Port.kMXP);
 
   // Slew rate filter variables for controlling lateral acceleration
   private double m_currentRotation = 0.0;
@@ -56,7 +66,7 @@ public class DriveSubsystem extends SubsystemBase {
   // Odometry class for tracking robot pose
   SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(
       DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+      Rotation2d.fromDegrees(getHeading()),
       new SwerveModulePosition[] {
           m_frontLeft.getPosition(),
           m_frontRight.getPosition(),
@@ -66,19 +76,22 @@ public class DriveSubsystem extends SubsystemBase {
 
   /** Creates a new DriveSubsystem. */
   public DriveSubsystem() {
+    SmartDashboard.putData("Field", field);
   }
 
   @Override
   public void periodic() {
     // Update the odometry in the periodic block
     m_odometry.update(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+        Rotation2d.fromDegrees(getHeading()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
             m_rearLeft.getPosition(),
             m_rearRight.getPosition()
         });
+
+    field.setRobotPose(getPose());
   }
 
   /**
@@ -97,7 +110,7 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public void resetOdometry(Pose2d pose) {
     m_odometry.resetPosition(
-        Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)),
+        Rotation2d.fromDegrees(getHeading()),
         new SwerveModulePosition[] {
             m_frontLeft.getPosition(),
             m_frontRight.getPosition(),
@@ -135,7 +148,6 @@ public class DriveSubsystem extends SubsystemBase {
         directionSlewRate = 500.0; //some high number that means the slew rate is effectively instantaneous
       }
       
-
       double currentTime = WPIUtilJNI.now() * 1e-6;
       double elapsedTime = currentTime - m_prevTime;
       double angleDif = SwerveUtils.AngleDifference(inputTranslationDir, m_currentTranslationDir);
@@ -177,7 +189,7 @@ public class DriveSubsystem extends SubsystemBase {
 
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
         fieldRelative
-            ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered, Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)))
+            ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered, m_odometry.getPoseMeters().getRotation().plus(Rotation2d.fromDegrees(15)))
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
     SwerveDriveKinematics.desaturateWheelSpeeds(
         swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
@@ -219,9 +231,9 @@ public class DriveSubsystem extends SubsystemBase {
     m_rearRight.resetEncoders();
   }
 
-  /** Zeroes the heading of the robot. */
-  public void zeroHeading() {
-    m_gyro.reset();
+  /** Zeroes the ppose of the robot. */
+  public void zero() {
+    resetOdometry(new Pose2d());
   }
 
   /**
@@ -230,7 +242,7 @@ public class DriveSubsystem extends SubsystemBase {
    * @return the robot's heading in degrees, from -180 to 180
    */
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getAngle(IMUAxis.kZ)).getDegrees();
+    return Rotation2d.fromDegrees(-m_gyro.getYaw()).getDegrees();
   }
 
   /**
@@ -239,6 +251,76 @@ public class DriveSubsystem extends SubsystemBase {
    * @return The turn rate of the robot, in degrees per second
    */
   public double getTurnRate() {
-    return m_gyro.getRate(IMUAxis.kZ) * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+    return m_gyro.getRate() * (DriveConstants.kGyroReversed ? -1.0 : 1.0);
+  }
+
+  public Field2d getField2d() { return field; }
+
+  public GoToPointCommand getGoToPointCommand(Pose2d pose, double power) { 
+    return getGoToPointCommand(pose, power, Double.MAX_VALUE);
+  }
+
+  public GoToPointCommand getGoToPointCommand(Pose2d pose, double power, double timeout) {
+    return new GoToPointCommand(this, pose, power, timeout);
+  }
+
+  public class GoToPointCommand extends Command {
+    private PIDController xController = new PIDController(AutoConstants.kPXController, 0, 0);
+    private PIDController yController = new PIDController(AutoConstants.kPYController, 0, 0);
+    private PIDController thetaController = new PIDController(AutoConstants.kPThetaController, 0, 0);
+
+    private DriveSubsystem subsystem;
+    private Pose2d target;
+    private double timeout;
+    private double power;
+
+    private Timer timer = new Timer();
+
+    protected GoToPointCommand(DriveSubsystem drive, Pose2d targetPose, double power, double timeout) {
+      addRequirements(drive);
+
+      this.subsystem = drive;
+      this.target = targetPose;
+      this.power = power;
+      this.timeout = timeout;
+    }
+
+    @Override
+    public void initialize() {
+      timer.reset();
+      timer.start();
+
+      thetaController.enableContinuousInput(-Math.PI, Math.PI);
+      
+      xController.setSetpoint(target.getX());
+      yController.setSetpoint(target.getY());
+      thetaController.setSetpoint(target.getRotation().getRadians());
+
+      xController.setTolerance(0.1);
+      yController.setTolerance(0.1);
+      thetaController.setTolerance(Math.toRadians(5));
+    }
+
+    @Override
+    public void execute() {
+      Pose2d pose = subsystem.getPose();
+
+      subsystem.drive(
+        xController.calculate(pose.getX()) * power, 
+        yController.calculate(pose.getY()) * power, 
+        thetaController.calculate(pose.getRotation().getRadians()) * power, 
+        true, false
+      );
+    }
+
+    @Override
+    public void end(boolean interrupted) {
+      subsystem.drive(0, 0, 0, false, false);
+    }
+
+    @Override
+    public boolean isFinished() {
+      return (xController.atSetpoint() && yController.atSetpoint() && thetaController.atSetpoint()) || timer.get() >= timeout;
+    }
   }
 }
