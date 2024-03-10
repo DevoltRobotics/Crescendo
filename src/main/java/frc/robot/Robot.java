@@ -31,7 +31,9 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.OIConstants;
+import frc.robot.auto.Auto2Notas;
 import frc.robot.auto.Auto3Notas;
+import frc.robot.auto.Auto3NotasDeLado;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -43,7 +45,10 @@ public class Robot extends TimedRobot {
   private RobotContainer m_robotContainer;
 
   private final String kNoAuto = "No Autonomo";
-  private final String kAuto3Notas = "Auto 3 Notas";
+  private final String kAutoSoloPalFrente = "Solo Pal Frente";
+  private final String kAuto3Notas = "3 Notas";
+  private final String kAuto3NotasDeLado = "3 Notas de Lado";
+  private final String kAuto2Notas = "2 Notas";
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -55,7 +60,7 @@ public class Robot extends TimedRobot {
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
 
-    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAuto3Notas});
+    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAutoSoloPalFrente, kAuto3Notas, kAuto3NotasDeLado, kAuto2Notas });
   }
 
   /**
@@ -85,8 +90,18 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     switch(SmartDashboard.getString("Auto Selector", kNoAuto)) {
+      case kAutoSoloPalFrente:
+        m_robotContainer.m_robotDrive.resetOdometry(new Pose2d());
+        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, 0, Rotation2d.fromDegrees(0)), 0.5).schedule();
+        break;
       case kAuto3Notas:
-        Auto3Notas.auto3Notas(m_robotContainer);
+        Auto3Notas.run(m_robotContainer);
+        break;
+      case kAuto3NotasDeLado:
+        Auto3NotasDeLado.run(m_robotContainer);  
+        break;
+      case kAuto2Notas:
+        Auto2Notas.run(m_robotContainer);
         break;
       default:
         break;
@@ -143,6 +158,10 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    if(m_robotContainer.m_driveController.getRightBumper()) {
+      m_robotContainer.m_robotDrive.setX();
+    }
+
     if(m_robotContainer.m_driveController.getLeftStickButton()) {
       m_robotContainer.m_robotDrive.zero();
     }

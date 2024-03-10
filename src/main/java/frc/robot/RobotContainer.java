@@ -59,8 +59,12 @@ public class RobotContainer {
 
   Servo m_hangRelease = new Servo(1);
 
+  int pcmId = 0;
   int revPHId = 2;
-  public final DoubleSolenoid m_armSolenoid = new DoubleSolenoid(revPHId, PneumaticsModuleType.REVPH, 0, 1);
+
+  // public final DoubleSolenoid m_armSolenoid = new DoubleSolenoid(revPHId, PneumaticsModuleType.REVPH, 0, 1);
+  public final DoubleSolenoid m_armSolenoid = new DoubleSolenoid(pcmId, PneumaticsModuleType.CTREPCM, 2, 1);
+
 
   /**
    * The container for the robot. Contains subsystems, OI devices, and commands.

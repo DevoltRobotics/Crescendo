@@ -92,6 +92,8 @@ public class DriveSubsystem extends SubsystemBase {
         });
 
     field.setRobotPose(getPose());
+
+    SmartDashboard.putNumber("Gyro", getPose().getRotation().getDegrees());
   }
 
   /**
