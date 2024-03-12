@@ -16,7 +16,7 @@ public class Auto3NotasDeLado {
             m_robotContainer.m_shooterLeft.set(1.0);
             m_robotContainer.m_shooterRight.set(1.0);
         }).andThen(
-                m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.38, -0.2, Rotation2d.fromDegrees(125)), 1.0, 3))
+                m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, -0.16, Rotation2d.fromDegrees(125)), 0.5, 3))
                 .andThen(
                         new InstantCommand(() -> m_robotContainer.m_armSolenoid.set(Value.kForward)))
                 .andThen(
@@ -37,13 +37,13 @@ public class Auto3NotasDeLado {
                             m_robotContainer.m_intakeContraRoller.set(0.6);
                         }))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, -0.35, Rotation2d.fromDegrees(0)),
-                                0.8, 5))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, 0.0, Rotation2d.fromDegrees(0)),
+                                0.6, 5))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2.1, -0.25, Rotation2d.fromDegrees(0)),
-                                0.7, 5))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, -0.1, Rotation2d.fromDegrees(10)),
+                                0.5, 4))
                 .andThen(
-                        new WaitCommand(0.05))
+                        new WaitCommand(0.01))
                 .andThen(
                         new InstantCommand(() -> {
                             m_robotContainer.m_intake.set(0.0);
@@ -52,8 +52,9 @@ public class Auto3NotasDeLado {
                             m_robotContainer.m_armSolenoid.set(Value.kReverse);
                         }))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.15, -0.35, Rotation2d.fromDegrees(125)), 
-                                1.0, 3))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.1, -0.58, Rotation2d.fromDegrees(125)), 
+                                0.6, 3))
+                .andThen(new WaitCommand(0.5))
                 .andThen(
                         new InstantCommand(() -> {
                             m_robotContainer.m_intake.set(0.6);
@@ -76,7 +77,7 @@ public class Auto3NotasDeLado {
 
                             m_robotContainer.m_armSolenoid.set(Value.kForward);
                         }))
-                .andThen(new WaitCommand(0.5))
+                .andThen(new WaitCommand(0.7))
                 .andThen(
                         new InstantCommand(() -> {
                             m_robotContainer.m_shooterAccelerator.set(0.5);
@@ -90,7 +91,7 @@ public class Auto3NotasDeLado {
                             m_robotContainer.m_shooterRight.set(0);
                         }))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, 0.3, Rotation2d.fromDegrees(90)), 0.7, 5))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, -0.8, Rotation2d.fromDegrees(90)), 0.5, 5))
                 .schedule();
     }
 
