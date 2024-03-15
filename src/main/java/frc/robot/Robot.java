@@ -18,6 +18,7 @@ import edu.wpi.first.math.trajectory.TrajectoryConfig;
 import edu.wpi.first.math.trajectory.TrajectoryGenerator;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -32,8 +33,9 @@ import frc.robot.Constants.AutoConstants;
 import frc.robot.Constants.DriveConstants;
 import frc.robot.Constants.OIConstants;
 import frc.robot.auto.Auto2Notas;
-import frc.robot.auto.Auto3Notas;
-import frc.robot.auto.Auto3NotasDeLado;
+import frc.robot.auto.Auto3NotasRojo;
+import frc.robot.auto.Auto2NotasDeLado;
+import frc.robot.auto.Auto3NotasAzul;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -46,8 +48,11 @@ public class Robot extends TimedRobot {
 
   private final String kNoAuto = "No Autonomo";
   private final String kAutoSoloPalFrente = "Solo Pal Frente";
-  private final String kAuto3Notas = "3 Notas";
-  private final String kAuto3NotasDeLado = "3 Notas de Lado";
+
+  private final String kAuto3NotasRojo = "3 Notas Rojo";
+  private final String kAuto3NotasAzul = "3 Notas Azul";
+
+  private final String kAuto2NotasDeLado = "2 Notas de Lado";
   private final String kAuto2Notas = "2 Notas";
 
   /**
@@ -60,7 +65,7 @@ public class Robot extends TimedRobot {
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
 
-    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAutoSoloPalFrente, kAuto3Notas, kAuto3NotasDeLado, kAuto2Notas });
+    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAutoSoloPalFrente, kAuto3NotasRojo, kAuto3NotasAzul, kAuto2NotasDeLado, kAuto2Notas });
   }
 
   /**
@@ -89,16 +94,19 @@ public class Robot extends TimedRobot {
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
-    switch(SmartDashboard.getString("Auto Selector", kNoAuto)) {
+    switch(SmartDashboard.getString("Auto Selector", kNoAuto)) { 
       case kAutoSoloPalFrente:
         m_robotContainer.m_robotDrive.resetOdometry(new Pose2d());
         m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, 0, Rotation2d.fromDegrees(0)), 0.5).schedule();
         break;
-      case kAuto3Notas:
-        Auto3Notas.run(m_robotContainer);
+      case kAuto3NotasRojo:
+        Auto3NotasRojo.run(m_robotContainer);
         break;
-      case kAuto3NotasDeLado:
-        Auto3NotasDeLado.run(m_robotContainer);  
+      case kAuto3NotasAzul:
+        Auto3NotasAzul.run(m_robotContainer);
+        break;
+      case kAuto2NotasDeLado:
+        Auto2NotasDeLado.run(m_robotContainer);  
         break;
       case kAuto2Notas:
         Auto2Notas.run(m_robotContainer);
@@ -119,6 +127,19 @@ public class Robot extends TimedRobot {
     CommandScheduler.getInstance().cancelAll();
 
     m_robotContainer.m_photonCamera.setDriverMode(true);
+
+    switch(DriverStation.getAlliance().orElseGet(() -> DriverStation.Alliance.Red)) {
+      case Blue:
+        m_robotContainer.m_robotDrive.resetOdometry(
+          m_robotContainer.m_robotDrive.getPose().rotateBy(Rotation2d.fromDegrees(90))
+        );
+        break;
+      case Red:  
+        m_robotContainer.m_robotDrive.resetOdometry(
+          m_robotContainer.m_robotDrive.getPose().rotateBy(Rotation2d.fromDegrees(-90))
+        );
+        break;
+    }
 
     // Configure default commands
     m_robotContainer.m_robotDrive.setDefaultCommand(
@@ -217,7 +238,7 @@ public class Robot extends TimedRobot {
       m_robotContainer.m_hangRelease.set(0.0);
     }
 
-    m_robotContainer.m_hang.set(-m_robotContainer.m_clawController.getLeftY());
+    // m_robotContainer.m_hang.set(-m_robotContainer.m_clawController.getLeftY());
   }
 
   @Override

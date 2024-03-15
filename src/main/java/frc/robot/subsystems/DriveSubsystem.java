@@ -17,7 +17,9 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.util.WPIUtilJNI;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.SerialPort;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -52,7 +54,7 @@ public class DriveSubsystem extends SubsystemBase {
   private final Field2d field = new Field2d();
 
   // The gyro sensor
-  private final AHRS m_gyro = new AHRS(SPI.Port.kMXP);
+  private final AHRS m_gyro = new AHRS(SerialPort.Port.kUSB1);
 
   // Slew rate filter variables for controlling lateral acceleration
   private double m_currentRotation = 0.0;
@@ -278,6 +280,9 @@ public class DriveSubsystem extends SubsystemBase {
 
     private Timer timer = new Timer();
 
+    private Timer gyroRunawayTimer = new Timer();
+    private double previousAngle;
+
     protected GoToPointCommand(DriveSubsystem drive, Pose2d targetPose, double power, double timeout) {
       addRequirements(drive);
 
@@ -301,18 +306,35 @@ public class DriveSubsystem extends SubsystemBase {
       xController.setTolerance(0.1);
       yController.setTolerance(0.1);
       thetaController.setTolerance(Math.toRadians(5));
+      
+      previousAngle = subsystem.getPose().getRotation().getDegrees();
     }
 
     @Override
     public void execute() {
       Pose2d pose = subsystem.getPose();
 
+      var thetaOutput = thetaController.calculate(pose.getRotation().getRadians());
+
+      if(Math.abs(thetaOutput) > 0.05 && Math.abs(pose.getRotation().getDegrees() - previousAngle) == 0) {
+        gyroRunawayTimer.start();
+
+        if(gyroRunawayTimer.hasElapsed(3)) {
+          DriverStation.reportError("GYRO RUNAWAY - NAVX NO REPORTA ANGULO CAMBIANTE AL CONTROLADOR", false);
+          cancel();
+        }
+      } else {
+        gyroRunawayTimer.reset();
+      }
+
       subsystem.drive(
         xController.calculate(pose.getX()) * power, 
         yController.calculate(pose.getY()) * power, 
-        thetaController.calculate(pose.getRotation().getRadians()) * power, 
+        thetaOutput * power, 
         true, false
       );
+
+      previousAngle = pose.getRotation().getDegrees();
     }
 
     @Override

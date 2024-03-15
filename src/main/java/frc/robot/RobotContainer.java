@@ -51,10 +51,9 @@ public class RobotContainer {
   public final CANSparkMax m_shooterRight = new CANSparkMax(13, MotorType.kBrushless);
   public final CANSparkMax m_shooterLeft = new CANSparkMax(14, MotorType.kBrushless);
 
-  public final CANSparkMax m_hang = new CANSparkMax(17, MotorType.kBrushed);
+  // public final CANSparkMax m_hang = new CANSparkMax(17, MotorType.kBrushed);
   public final CANSparkMax m_intake = new CANSparkMax(15, MotorType.kBrushed);
-  public final CANSparkMax m_intakeContraRoller = new CANSparkMax(16, MotorType.kBrushed);
-
+  public final CANSparkMax m_intakeContraRoller = new CANSparkMax
   PhotonCamera m_photonCamera = new PhotonCamera("PI Cam");
 
   Servo m_hangRelease = new Servo(1);

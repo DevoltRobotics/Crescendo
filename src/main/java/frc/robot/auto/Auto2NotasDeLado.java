@@ -7,7 +7,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import frc.robot.RobotContainer;
 
-public class Auto3NotasDeLado {
+public class Auto2NotasDeLado {
 
     public static void run(RobotContainer m_robotContainer) {
         m_robotContainer.m_robotDrive.resetOdometry(new Pose2d(0, 0, Rotation2d.fromDegrees(125)));
@@ -37,8 +37,8 @@ public class Auto3NotasDeLado {
                             m_robotContainer.m_intakeContraRoller.set(0.6);
                         }))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, 0.0, Rotation2d.fromDegrees(0)),
-                                0.6, 5))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, -0.2, Rotation2d.fromDegrees(0)),
+                                0.8, 3))
                 .andThen(
                         m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(2, -0.1, Rotation2d.fromDegrees(10)),
                                 0.5, 4))
@@ -52,7 +52,7 @@ public class Auto3NotasDeLado {
                             m_robotContainer.m_armSolenoid.set(Value.kReverse);
                         }))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.1, -0.58, Rotation2d.fromDegrees(125)), 
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.1, -0.65, Rotation2d.fromDegrees(125)), 
                                 0.6, 3))
                 .andThen(new WaitCommand(0.5))
                 .andThen(
