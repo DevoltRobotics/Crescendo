@@ -39,10 +39,10 @@ public class Auto3NotasRojo {
                         }))
                 .andThen(
                         m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.3, 0, Rotation2d.fromDegrees(0)),
-                                0.8, 5))
+                                0.8, 2))
                 .andThen(
-                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(1.1, 0, Rotation2d.fromDegrees(0)),
-                                0.7, 5))
+                        m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(1.3, 0, Rotation2d.fromDegrees(5)),
+                                0.7, 2))
                 .andThen(
                         new WaitCommand(0.05))
                 .andThen(
@@ -108,7 +108,7 @@ public class Auto3NotasRojo {
                         }))
                 .andThen(
                         m_robotContainer.m_robotDrive
-                                .getGoToPointCommand(new Pose2d(0.43, 0.3, Rotation2d.fromDegrees(180)), 0.6, 5))
+                                .getGoToPointCommand(new Pose2d(0.48, 0.3, Rotation2d.fromDegrees(180)), 0.6, 5))
                 .andThen(
                         new InstantCommand(() -> {
                             m_robotContainer.m_intake.set(0.6);

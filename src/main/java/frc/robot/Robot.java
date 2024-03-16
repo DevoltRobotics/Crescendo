@@ -49,6 +49,8 @@ public class Robot extends TimedRobot {
   private final String kNoAuto = "No Autonomo";
   private final String kAutoSoloPalFrente = "Solo Pal Frente";
 
+  private final String kAutoUnaNota = "Una Nota";
+
   private final String kAuto3NotasRojo = "3 Notas Rojo";
   private final String kAuto3NotasAzul = "3 Notas Azul";
 
@@ -65,7 +67,7 @@ public class Robot extends TimedRobot {
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
 
-    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAutoSoloPalFrente, kAuto3NotasRojo, kAuto3NotasAzul, kAuto2NotasDeLado, kAuto2Notas });
+    SmartDashboard.putStringArray("Auto List", new String[] { kNoAuto, kAutoSoloPalFrente, kAutoUnaNota, kAuto3NotasRojo, kAuto3NotasAzul, kAuto2NotasDeLado, kAuto2Notas });
   }
 
   /**
@@ -110,6 +112,32 @@ public class Robot extends TimedRobot {
         break;
       case kAuto2Notas:
         Auto2Notas.run(m_robotContainer);
+        break;
+      case kAutoUnaNota:
+        m_robotContainer.m_robotDrive.resetOdometry(new Pose2d(0, 0, Rotation2d.fromDegrees(180)));
+
+        new InstantCommand(() -> {
+          m_robotContainer.m_shooterLeft.set(1.0);
+          m_robotContainer.m_shooterRight.set(1.0);
+        }).andThen(
+              m_robotContainer.m_robotDrive.getGoToPointCommand(new Pose2d(0.33, 0, Rotation2d.fromDegrees(180)), 1.0,
+                      3))
+              .andThen(
+                      new InstantCommand(() -> m_robotContainer.m_armSolenoid.set(Value.kForward)))
+              .andThen(
+                      new WaitCommand(0.8))
+              .andThen(
+                      new InstantCommand(() -> {
+                          m_robotContainer.m_shooterAccelerator.set(0.5);
+                      }))
+              .andThen(
+                      new WaitCommand(0.5))
+              .andThen(
+                      new InstantCommand(() -> {
+                          m_robotContainer.m_shooterAccelerator.set(0.0);
+                          m_robotContainer.m_shooterLeft.set(0);
+                          m_robotContainer.m_shooterRight.set(0);
+                      })).schedule();
         break;
       default:
         break;
